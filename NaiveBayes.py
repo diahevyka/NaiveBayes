@@ -5,20 +5,15 @@ Created on Sat Feb 23 11:15:19 2019
 @author: Diah Hevyka M
 """
 
-import pandas as pandas
+import pandas as pd
 
-tests = pandas.read_csv("TrainsetTugas1ML.csv")
-all = tests.count()
+train = pd.read_csv("TrainsetTugas1ML.csv")
+test = pd.read_csv("TestsetTugas1ML.csv")
+
+all = train.count()
 
 #menghitung semua frekuensi
-age = tests['age'].value_counts()
-workclass = tests['workclass'].value_counts()
-education = tests['education'].value_counts()
-marital_status = tests['marital-status'].value_counts()
-occupation = tests['occupation'].value_counts()
-relationship = tests['relationship'].value_counts()
-hours_per_week = tests['hours-per-week'].value_counts()
-income = tests['income'].value_counts()
+income = train['income'].value_counts()
 
 #Probabilitas income p(h)
 def klasifikasi(income):    
@@ -27,52 +22,47 @@ def klasifikasi(income):
         income_klasifikasi.append(i / all[8])
     return income_klasifikasi
 
-pH = pandas.DataFrame({
-        "Income" : income.index,
-        #"Fraction" : income + " / " + all[8],
-        "Probability" : klasifikasi(income)
+pH = pd.DataFrame({
+    "Income" : income.index,
+    #"Fraction" : income + " / " + all[8],
+    "Probability" : klasifikasi(income)
 })
-print(pH)
+#print(pH)
 
+atribut = train.columns[1:-1]
+atribut = atribut.drop(['relationship'])
+#print(atribut)
 
+def naivebayes(atribut, train):
+    hasil = {}
+    for kelas, kelasdata  in train.groupby("income"):
+        hasil.update({kelas: {} })
+        for attr in atribut:
+            hasil[kelas].update({attr: {} })
+            for a,b in kelasdata.groupby(attr):
+                penyebut = len(kelasdata)
+                pembilang = len(b)
+                hasil[kelas][attr].update({ a: pembilang / penyebut })
+    return hasil
 
-#Probability atribut
+result = []
 
-'''
-#proability age
-young = age[0] / all[1]
-adult = age[1] / all[1]
-old= age[2] / all[1]
+hasil = naivebayes(atribut, train)
 
-#probability workclass
-private = workclass[0] / all[2]
-self_emp_not_inc = workclass[1] / all[2]
-local_gov = workclass[2] / all[2]
+for index,value in test.iterrows():
+    #print(value["age"])
+    outcome = []
+    for kelas, data in train.groupby("income"):
+        pC = 1
+        for atr in atribut:
+            nilai = value[atr]
+            pC *= hasil[kelas][atr][nilai]
+        prob = pC * pH.loc[pH["Income"] == kelas].Probability.values
+        outcome.append([prob, kelas])
+    if (outcome[0][0] > outcome[1][0]):
+        result.append(outcome[0][1])
+    else:
+        result.append(outcome[1][1])
+print(result)
 
-#probability education
-bachelor = education[0] / all[3]
-hs_grad = education[1] / all[3]
-some_college = education[2] / all[3]
-
-#probability marital_status
-married_civ_spouse = marital_status[0] / all[4]
-never_married = marital_status[1] / all[4]
-divorced = marital_status[2] / all[4]
-
-#probability occupation
-exec_managerial = occupation[0] / all[5]
-craft_repair = occupation[1] / all[5]
-prof_specialty = occupation[2] / all[5]
-
-#probability relationship
-husband = relationship[0] / all[6]
-not_in_family = relationship[1] / all[6]
-own_child = relationship[3] / all[6]
-
-#probability hours_per_week
-normal = hours_per_week[0] / all[7]
-low = hours_per_week[1] / all[7]
-many = hours_per_Week[2] / all[7]
-'''
-
-#hitung probability artribut
+pd.DataFrame(result).to_csv("TebakanTugas1ML.csv", index=False, header=False)            
